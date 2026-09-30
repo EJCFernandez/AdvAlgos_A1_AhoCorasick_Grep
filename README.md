@@ -5,8 +5,10 @@ on an Aho-Corasick automaton. C++17, CMake, no external dependencies; builds wit
 MSVC on Windows, g++ on Linux and clang on macOS.
 
 Searching for *n* patterns takes one pass over the input, in time proportional to
-the input length plus the number of matches — it does not get slower as patterns
-are added, which is the point the benchmarks set out to show.
+the input length plus the number of matches, however many patterns there are.
+That is the theory; the benchmarks (`bench/`) measure how far it holds in
+practice once the transition table outgrows the CPU caches, and compare ahogrep
+with GNU grep, ripgrep and a grep-per-pattern loop.
 
 ## Status
 
@@ -19,8 +21,8 @@ are added, which is the point the benchmarks set out to show.
 | edge-case tests (`test_edge`) | done |
 | CLI parsing, chunked I/O, line tracking, output, colour | done, tested by `test_io` |
 | `--dump-automaton` debug view | done |
-| `--dfa` mode (stretch) | not started — the flag is rejected with exit 2 |
-| benchmark scripts | not started |
+| `--dfa` mode (stretch) | dropped for time, future work; the flag is rejected with exit 2 |
+| benchmark scripts (`bench/`) | done; see [Benchmarks](#benchmarks) |
 
 ## Building
 
@@ -119,7 +121,7 @@ ahogrep [OPTIONS] (-e PATTERN | -f FILE)... [FILE...]
   -c           print only a count of matching lines per file
   -o           print only the matched text, one match per line
       --color  highlight matches using ANSI escape codes
-      --dfa    use the DFA-completed automaton (not built yet)
+      --dfa    use the DFA-completed automaton (not implemented)
       --dump-automaton
                print every node's string, depth, failure link and
                output link for the given patterns, then exit
@@ -270,10 +272,28 @@ invariant  output(v) = nearest terminal node on v's fail chain: holds (9/9)
   so non-ASCII `-e` patterns may be mangled. Put UTF-8 patterns in a file and
   use `-f`, which is read as raw bytes.
 
+## Benchmarks
+
+The scripts in `bench/` compare `ahogrep -c` with `LC_ALL=C grep -F -c`,
+`rg -F -c` and a grep-per-pattern loop. They cover natural and random text of
+1, 10 and 100 MB, with 1 to 100,000 patterns. They also measure construction
+time and peak memory. Run them on Linux (WSL2 works) from a clone on the Linux
+filesystem:
+
+```
+bench/run_bench.sh quick     # trial run, well under a minute
+bench/run_bench.sh full      # about 15 minutes
+```
+
+[`bench/README.md`](bench/README.md) covers the requirements, the method and
+the output files.
+
 ### Out of scope
 
 The following are listed as future work:
 
+- the `--dfa` DFA-completed automaton (every node gets a transition for every
+  byte, so the search never follows a failure link)
 - recursive directory search
 - regular expressions
 - `-w` whole-word matching

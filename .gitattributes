@@ -1,0 +1,4 @@
+# bash chokes on CRLF ("$'\r': command not found"), and these scripts are
+# edited on Windows but run in WSL. Keep them LF in every checkout.
+*.sh text eol=lf
+*.py text eol=lf

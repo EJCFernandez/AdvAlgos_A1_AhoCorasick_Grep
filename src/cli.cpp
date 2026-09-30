@@ -21,7 +21,7 @@ const char* usage_text() {
         "  -c           print only a count of matching lines per file\n"
         "  -o           print only the matched text, one match per line\n"
         "      --color  highlight matches using ANSI escape codes\n"
-        "      --dfa    use the DFA-completed automaton (not built yet)\n"
+        "      --dfa    use the DFA-completed automaton (not implemented)\n"
         "      --dump-automaton\n"
         "               print every node's string, depth, failure link and\n"
         "               output link for the given patterns, then exit\n"

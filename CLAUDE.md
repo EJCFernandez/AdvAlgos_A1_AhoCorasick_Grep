@@ -51,8 +51,10 @@ If the student explicitly asks to change this arrangement, confirm once, then fo
   - its output link (the nearest node on the failure chain that ends a pattern, or -1)
   - the pattern id(s) ending at that node
   - its depth (useful for computing match start positions)
-- **Search algorithm:** start with classic Aho-Corasick, which follows failure links at search time on a mismatch.
-  A DFA-completion variant (every node has a transition for every byte, filled in during the breadth-first pass) is a stretch goal behind a `--dfa` flag, used as a second benchmark comparison.
+- **Search algorithm:** classic Aho-Corasick, which follows failure links at search time on a mismatch.
+  A DFA-completion variant (every node has a transition for every byte, filled in during the breadth-first pass) was planned as a stretch goal behind `--dfa`.
+  It was **dropped on 2026-09-30 for lack of time** and is listed as future work.
+  The flag is still parsed and rejected with exit 2, so nobody silently gets classic mode when asking for DFA mode.
 - **Streaming:** read input in large chunks (for example 1 MiB) using `fread` in binary mode.
   The automaton state is held outside the chunk loop, so it carries across chunk boundaries.
   Patterns never contain `\n`, so a match can never span lines and the automaton never needs resetting.
@@ -82,6 +84,14 @@ If the student explicitly asks to change this arrangement, confirm once, then fo
   `-e ab -e ab` reports two matches per occurrence.
   Reason: "report every occurrence" stays literally true and the differential
   tester can compare match sets without deduplicating on either side.
+
+## Benchmark environment and workflow (2026-09-30)
+
+- Benchmarks run in **WSL2 Ubuntu** on the same laptop as development: GCC 15.2.0, CMake 4.2.3.
+- The repo is cloned to `~/ahogrep` inside WSL, **not** under `/mnt/c`, because cross-filesystem I/O would distort the timings.
+- **Workflow:** Claude Code edits on Windows, the student commits, then runs `git pull` in `~/ahogrep`.
+  Claude Code may run commands in WSL via `wsl.exe -d Ubuntu` (the default WSL distro is `docker-desktop`, which has no bash).
+- **Status:** all tests pass in WSL, and `ahogrep -n` output is identical to `LC_ALL=C grep -n -F` on `examples/`.
 
 ## Repository layout
 
@@ -115,14 +125,14 @@ ahogrep [OPTIONS] (-e PATTERN | -f FILE)... [FILE...]
 - `-c`: print the count of matching lines per file.
 - `-o`: print only the matched text, one match per line.
 - `--color`: highlight matches (ANSI codes).
-- `--dfa`: use the DFA-completed automaton (stretch goal; rejected with exit 2 until built).
+- `--dfa`: DFA-completed automaton. Dropped (future work); the flag is rejected with exit 2.
 - `--dump-automaton`: print each node's string, depth, fail link and output link, then exit (debug/video aid; added 2026-09-30 at the student's request).
 - `-h` / `--help`: print usage.
 
 With no input files, read stdin.
 With multiple files, prefix output lines with the filename, as grep does.
 
-Out of scope, to be listed as future work: recursive directory search, regular expressions, `-w` whole-word matching, `-v` inversion, and context lines.
+Out of scope, to be listed as future work: the `--dfa` DFA-completed automaton, recursive directory search, regular expressions, `-w` whole-word matching, `-v` inversion, and context lines.
 
 ## Testing
 
@@ -154,26 +164,34 @@ Enable warnings: `-Wall -Wextra` on GCC/Clang, `/W4` on MSVC.
 
 ## Benchmark plan (run on Linux with the release build)
 
-Compare these commands:
-- `ahogrep`, classic mode
-- `ahogrep --dfa`, if built
-- `grep -F -f patterns.txt`
-- grep run once per pattern in a loop
+Scripts live in `bench/` (bash, plus Python for data generation and matplotlib plots); `bench/README.md` has the details.
+Entry point: `bench/run_bench.sh quick|full`.
+
+Compare these commands, all with `-c` so output cost doesn't dominate:
+- `ahogrep -c -f patterns`
+- `LC_ALL=C grep -F -c -f patterns`
+- `rg -F -c -f patterns` (bonus: an industrial Aho-Corasick/SIMD implementation)
+- grep run once per pattern in a loop, **only up to 100 patterns** (impractically slow beyond); the cap is noted in the results
+- one extra `grep -F` run under a UTF-8 locale at a single configuration, to show the locale effect
 
 Parameters:
-- Pattern counts: 1, 10, 100, 1,000, 10,000 (100,000 if memory allows).
+- Pattern counts: 1, 10, 100, 1,000, 10,000, 100,000.
 - File sizes: roughly 1 MB, 10 MB, 100 MB.
-- Data: natural-language text, plus random text.
-  Build pattern sets as a mix of words sampled from the text (so there are real matches) and random strings (so there are non-matches).
+- Data (deterministic seeds, generated into the gitignored `bench/data/`): natural-language text from a few public-domain Project Gutenberg books, repeated to size, with a synthetic Zipf-distributed fallback if the download fails; plus random lowercase text.
+  Pattern sets are half words sampled from the text (so there are real matches) and half random strings of similar length (so there are non-matches).
+
+Measured separately:
+- automaton construction time vs pattern count (every tool on an empty input file)
+- peak memory (max RSS from `/usr/bin/time -v`) vs pattern count, alongside ahogrep's node count and transition-table size (read from the `--dump-automaton` header)
 
 Fairness rules:
 - Run grep with `LC_ALL=C`, because locale drastically changes grep's speed.
-- Before timing, verify that the tools agree, for example by comparing `-c` outputs.
-- Time with `hyperfine`, using warmup runs and sending output to `/dev/null`.
-- Record peak memory with `/usr/bin/time -v`.
-  Memory versus pattern count for the dense table is expected to be an interesting plot.
+- Before timing each configuration, verify that ahogrep, grep -F and rg agree on the `-c` count, and abort loudly if not.
+- Time with `hyperfine`, using warmup runs, with output sent to a pipe that is discarded (`--output=pipe`), **not** to `/dev/null`.
+  GNU grep detects a `/dev/null` stdout and stops at the first match, which made `grep -F -c` look like it scanned 100 MB in about 1 ms.
+- Record the environment (CPU, kernel, compiler and tool versions) next to the results.
 
-Write results to CSV for plotting.
+Results go to `bench/results/<mode>/` as CSV and hyperfine JSON, and the plots are PNGs.
 
 ## Working rules for Claude Code
 
@@ -193,7 +211,8 @@ Write results to CSV for plotting.
 - [x] CLI parsing, chunked I/O, line tracking, buffered output, colour
 - [x] `--dump-automaton` debug view (for the video)
 - [x] README
-- [ ] (Stretch) DFA completion behind `--dfa`
-- [ ] On first Linux configure, check which build type the status line reports with no `-DCMAKE_BUILD_TYPE` given, and record the result for the AI-use log
-- [ ] Benchmark data generation and scripts (Linux)
+- [-] (Stretch) DFA completion behind `--dfa`: dropped 2026-09-30, future work
+- [x] On first Linux configure, check which build type the status line reports with no `-DCMAKE_BUILD_TYPE` given, and record the result for the AI-use log.
+  Result (2026-09-30, WSL2, GCC 15.2.0, CMake 4.2.3): `ahogrep: build type is Release`, and the cache holds `CMAKE_BUILD_TYPE=Release`.
+- [x] Benchmark data generation and scripts (Linux); quick mode tested in WSL
 - [ ] Benchmarks run, CSVs and plots produced
