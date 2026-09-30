@@ -1,0 +1,10 @@
+she sells sea shells by the sea shore
+the ushers showed his heirs to their seats
+HE SAID HERS WAS THE BEST
+nothing to see on this line
+hishers is not a word but it overlaps nicely
+abcabcabc: repeated patterns overlap with themselves
+café and naïve: UTF-8 characters are matched as plain bytes
+CAFÉ in capitals: -i folds C, A and F but not É
+    indented line with his and hers
+this final line has no trailing newline: she
