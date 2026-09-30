@@ -67,9 +67,18 @@ struct ScanResult {
 // Scans one already-open stream to completion and writes whatever the options
 // call for. `display_name` is the prefix for output lines, or nullptr for none
 // (single-input case). The automaton must already be built.
+//
+// `chunk_size` is a parameter only so tests/test_io.cpp can shrink it to a few
+// bytes and push every line across a chunk boundary; the CLI uses the default.
 ScanResult scan_stream(std::FILE* in, const char* display_name,
                        const AhoCorasick& ac, const Options& opts,
-                       OutputBuffer& out);
+                       OutputBuffer& out, std::size_t chunk_size = kChunkSize);
+
+// --dump-automaton: one row per node in breadth-first order (string, depth,
+// failure link, output link, pattern ids), followed by a check of the two link
+// invariants. Lives here rather than in the automaton so that the automaton
+// stays free of I/O.
+void dump_automaton(const AhoCorasick& ac, OutputBuffer& out);
 
 }  // namespace ahogrep
 

@@ -26,7 +26,8 @@ struct Options {
     bool count_only       = false;  // -c, counts matching LINES, like grep
     bool only_matching    = false;  // -o, prints every match including overlaps
     bool color            = false;  // --color
-    bool dfa              = false;  // --dfa, stretch goal
+    bool dfa              = false;  // --dfa, stretch goal (rejected until built)
+    bool dump_automaton   = false;  // --dump-automaton: print nodes and links, exit
 };
 
 enum class ParseStatus {

@@ -77,60 +77,9 @@ void AhoCorasick::build() {
     built_ = true;
 }
 
-// ================= STUDENT-OWNED CODE -- write this yourself =================
-//
-// Fills fail_ and out_link_ for every node, breadth-first from the root.
-//
-// What the two arrays mean:
-//   fail_[v]     -- the node spelling the longest PROPER suffix of v's string
-//                   that is itself a prefix of some pattern (the root if there
-//                   is none).
-//   out_link_[v] -- the nearest node on v's failure chain that is terminal
-//                   (is_terminal()), or kNone. This is a shortcut: the scan
-//                   must report patterns that end inside the current one, and
-//                   hopping straight between terminal nodes lets it skip the
-//                   non-terminal nodes in between. Without it the scan would
-//                   walk the whole failure chain at every single input byte.
-//
-// Preconditions when this runs: the trie is built, node 0 is the root, depth_
-// is correct, fail_ is all kRoot and out_link_ all kNone.
-//
-// THE INVARIANT that makes breadth-first order necessary: fail_[v] always points
-// at a node of strictly smaller depth than v. So if you process nodes in
-// non-decreasing depth order, fail_ and out_link_ for every node you need to
-// read are already final. That single sentence is the "one invariant" the video
-// asks for -- and question 2 below is the "what breaks if this line changes"
-// example, which is worth writing down as you go.
-//
-// Guiding questions -- answer these before writing code:
-//   1. Depth-1 nodes (the root's children) are the base case. What is fail_ for
-//      one of them, and why can it not be worked out by the same rule as the
-//      deeper nodes? What would happen if you tried?
-//   2. For a node u with child v on byte c: you want the longest proper suffix
-//      of u's string plus c that is a prefix of a pattern. You already know
-//      fail_[u]. How do you get from fail_[u] to fail_[v], and why might you
-//      have to follow the failure chain more than one step? Where does the walk
-//      stop? (Try swapping BFS for DFS on the patterns {a, ab, bc} and see which
-//      link comes out wrong -- that is the example to show on video.)
-//   3. out_link_[v] is expressible in one line from fail_[v], is_terminal() and
-//      out_link_[fail_[v]]. Write that line out in words first. Why is it
-//      correct to reuse out_link_[fail_[v]] instead of walking the chain?
-//   4. Does the order matter -- must fail_[v] be final before you compute
-//      out_link_[v]? What does out_link_ end up as if you set it first?
-//
-// Suggested first test once this compiles: patterns {"he", "she", "his",
-// "hers"} over "ushers", the textbook example. Print depth_, fail_ and
-// out_link_ per node and check them by hand before running the random tester --
-// a wrong link is far easier to see in a 10-node table than in a diff of
-// thousands of matches.
-//
-// std::queue lives in <queue>; add the include when you need it.
+// ================= STUDENT-OWNED CODE =================
+
 void AhoCorasick::build_failure_links() {
-    // TODO(student): breadth-first pass computing fail_ and out_link_.
-    //
-    // Remove this stub. Until it is written, search_chunk() can only ever match
-    // patterns starting at the point the automaton happens to be in, so the
-    // tests will fail -- that is expected, not a bug in the scaffold.
 
     std::queue<int32_t> nodeQueue;
 
@@ -183,4 +132,4 @@ void AhoCorasick::build_failure_links() {
 }
 // ================= END STUDENT-OWNED CODE ====================================
 
-}  // namespace ahogrep
+}

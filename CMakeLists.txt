@@ -47,12 +47,14 @@ add_library(aho_corasick STATIC src/aho_corasick.cpp)
 target_include_directories(aho_corasick PUBLIC include)
 target_link_libraries(aho_corasick PUBLIC ahogrep_flags)
 
-add_executable(ahogrep
-  src/main.cpp
-  src/cli.cpp
-  src/io.cpp
-)
-target_link_libraries(ahogrep PRIVATE aho_corasick ahogrep_flags)
+# Argument parsing and the chunked scanner, as a library so the tests can drive
+# parse_args() and scan_stream() directly instead of shelling out to the binary.
+add_library(ahogrep_cli STATIC src/cli.cpp src/io.cpp)
+target_include_directories(ahogrep_cli PUBLIC src)
+target_link_libraries(ahogrep_cli PUBLIC aho_corasick ahogrep_flags)
+
+add_executable(ahogrep src/main.cpp)
+target_link_libraries(ahogrep PRIVATE ahogrep_cli ahogrep_flags)
 
 enable_testing()
 
@@ -64,9 +66,15 @@ add_test(NAME test_random COMMAND test_random)
 # answer. A timeout is what turns that hang into a reported failure.
 set_tests_properties(test_random PROPERTIES TIMEOUT 120)
 
+# Links the CLI library too: the CRLF pattern-file case goes through parse_args().
 add_executable(test_edge tests/test_edge.cpp)
-target_link_libraries(test_edge PRIVATE aho_corasick ahogrep_flags)
+target_link_libraries(test_edge PRIVATE ahogrep_cli ahogrep_flags)
 add_test(NAME test_edge COMMAND test_edge)
-# Still a stub: exit code 77 makes ctest report Skipped rather than Passed, so a
-# green run cannot claim coverage that does not exist yet.
-set_tests_properties(test_edge PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 120)
+set_tests_properties(test_edge PROPERTIES TIMEOUT 120)
+
+# scan_stream() against a naive line-by-line reference, at chunk sizes down to
+# one byte, so every line straddles a chunk boundary somewhere.
+add_executable(test_io tests/test_io.cpp)
+target_link_libraries(test_io PRIVATE ahogrep_cli ahogrep_flags)
+add_test(NAME test_io COMMAND test_io)
+set_tests_properties(test_io PROPERTIES TIMEOUT 120)

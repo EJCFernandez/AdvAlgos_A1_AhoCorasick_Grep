@@ -90,63 +90,25 @@ public:
         return !ids_[static_cast<std::size_t>(v)].empty();
     }
 
-    // ============== STUDENT-OWNED CODE -- write this yourself ================
-    //
-    // Scans `len` bytes of `data` starting from automaton state `state`, and
-    // reports every occurrence -- overlapping ones included -- by calling
-    //
-    //     on_match(int32_t pattern_id, uint64_t end_offset)
-    //
-    // where `end_offset` is ONE PAST the final byte of the match, counted from
-    // the start of the whole stream. `base_offset` is the stream offset of
-    // data[0], so the matched text is the half-open range
-    // [end_offset - pattern_length(id), end_offset). The tester and the -o /
-    // --color output both depend on that definition, so pin it down before
-    // writing a line.
-    //
-    // Returns the state after the last byte, which the caller feeds back in for
-    // the next chunk.
-    //
-    // Preconditions: build() has been called; `state` is a valid node id.
-    //
-    // THE INVARIANT to hold on to: after consuming input byte i, `state` is the
-    // node spelling the longest suffix of everything read so far that is also a
-    // prefix of some pattern. Everything else follows from it. If you can state
-    // that on video and point at the line that maintains it, this function is
-    // done.
-    //
-    // Guiding questions -- these are the whole design, answer them first:
-    //   1. On a byte with no child from `state`, where do you go, and why does
-    //      that walk always terminate? Why is the root the only safe place to
-    //      stop? If you write `while (state != kRoot)`, what must you re-check
-    //      after the loop ends, and what goes wrong if you forget?
-    //   2. Landing on a node tells you a pattern ended there -- so why is that
-    //      not all the matches ending at this position? Which chain do you walk
-    //      to find the rest, and why out_link_ rather than fail_?
-    //   3. `state` arrives already non-root when a chunk boundary falls inside a
-    //      pattern. Does your loop treat byte 0 of a chunk differently from byte
-    //      50? It must not -- that is precisely what the chunk-split test checks.
-    //   4. Where does fold() belong, and what breaks under -i if you fold the
-    //      input bytes but not the patterns (or the other way round)?
-    //
-    // Pitfalls that show up in most first drafts: reporting a node's own ids but
-    // never walking the output-link chain (so "he" is missed inside "she"); an
-    // off-by-one in end_offset; and folding after the transition lookup instead
-    // of before it.
-    //
-    // It is a template so the callback inlines: the tester collects into a
-    // vector, the CLI bumps a line counter, and neither pays a std::function
-    // call per match. Being a template is also why it lives in this header
-    // instead of next to build_failure_links() in aho_corasick.cpp -- a test
-    // file has to instantiate it.
+    // Read-only views of one node, for --dump-automaton and the edge tests.
+    // Nothing on the search path uses these; they exist so the links can be
+    // inspected from outside without making the tests friends of the class.
+    int32_t child(int32_t v, unsigned char c) const {
+        return next_[static_cast<std::size_t>(v)][c];
+    }
+    int32_t fail_link(int32_t v) const   { return fail_[static_cast<std::size_t>(v)]; }
+    int32_t output_link(int32_t v) const { return out_link_[static_cast<std::size_t>(v)]; }
+    int32_t depth(int32_t v) const       { return depth_[static_cast<std::size_t>(v)]; }
+    const std::vector<int32_t>& ids_at(int32_t v) const {
+        return ids_[static_cast<std::size_t>(v)];
+    }
+
+    // ============== STUDENT-OWNED CODE ================
+
     template <class OnMatch>
     int32_t search_chunk(const unsigned char* data, std::size_t len,
                          int32_t state, std::uint64_t base_offset,
                          OnMatch&& on_match) const {
-        // TODO(student): step the automaton over data[0..len), following failure
-        // links on a mismatch and reporting matches via the output links.
-        // Replace this stub. The void casts only exist to keep the scaffold
-        // warning-free until you do.
 
         for (std::size_t i = 0; i < len; ++i) {
             unsigned char folded = fold(data[i]);

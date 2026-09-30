@@ -93,6 +93,7 @@ src/cli.{hpp,cpp}          argument parsing
 src/io.{hpp,cpp}           chunked reading, line tracking, buffered output, colour
 tests/test_random.cpp      differential tester against a naive matcher
 tests/test_edge.cpp        hand-written edge cases
+tests/test_io.cpp          scan_stream() vs a naive line-by-line reference, at chunk sizes down to 1 byte
 bench/                     data generation and benchmark scripts (Linux, bash)
 README.md
 CLAUDE.md
@@ -114,7 +115,8 @@ ahogrep [OPTIONS] (-e PATTERN | -f FILE)... [FILE...]
 - `-c`: print the count of matching lines per file.
 - `-o`: print only the matched text, one match per line.
 - `--color`: highlight matches (ANSI codes).
-- `--dfa`: use the DFA-completed automaton (stretch goal).
+- `--dfa`: use the DFA-completed automaton (stretch goal; rejected with exit 2 until built).
+- `--dump-automaton`: print each node's string, depth, fail link and output link, then exit (debug/video aid; added 2026-09-30 at the student's request).
 - `-h` / `--help`: print usage.
 
 With no input files, read stdin.
@@ -185,11 +187,12 @@ Write results to CSV for plotting.
 
 - [x] Scaffold: CMake, layout, automaton class with trie insertion, student stubs
 - [x] Naive matcher and random differential tester
-- [ ] Student: `build_failure_links()`
-- [ ] Student: search loop with output links
-- [ ] All random and edge tests pass, including chunk-split tests
-- [ ] CLI parsing, chunked I/O, line tracking, buffered output, colour
-- [ ] README
+- [x] Student: `build_failure_links()`
+- [x] Student: search loop with output links
+- [x] All random and edge tests pass, including chunk-split tests
+- [x] CLI parsing, chunked I/O, line tracking, buffered output, colour
+- [x] `--dump-automaton` debug view (for the video)
+- [x] README
 - [ ] (Stretch) DFA completion behind `--dfa`
 - [ ] On first Linux configure, check which build type the status line reports with no `-DCMAKE_BUILD_TYPE` given, and record the result for the AI-use log
 - [ ] Benchmark data generation and scripts (Linux)

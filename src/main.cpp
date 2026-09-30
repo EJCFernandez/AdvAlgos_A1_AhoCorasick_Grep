@@ -39,8 +39,10 @@ int main(int argc, char** argv) {
             std::fputs(usage_text(), stdout);
             return kExitMatched;
         case ParseStatus::Error:
+            // A one-line hint rather than the whole usage text, as grep does,
+            // so the actual error message is not scrolled away.
             fail(error);
-            std::fputs(usage_text(), stderr);
+            std::fputs("Try 'ahogrep --help' for more information.\n", stderr);
             return kExitError;
         case ParseStatus::Ok:
             break;
@@ -50,7 +52,8 @@ int main(int argc, char** argv) {
     for (const std::string& p : opts.patterns) {
         if (ac.add_pattern(p) == AhoCorasick::kNone) {
             // Only reason add_pattern refuses; see the settled decision on empty
-            // patterns in CLAUDE.md.
+            // patterns in CLAUDE.md. parse_args() already rejects empty patterns
+            // with a more specific message, so this is the backstop.
             fail("empty pattern is not allowed");
             return kExitError;
         }
@@ -58,16 +61,27 @@ int main(int argc, char** argv) {
     ac.build();
 
     OutputBuffer out(stdout);
+
+    if (opts.dump_automaton) {
+        // A debugging view, not a search: input files are ignored.
+        dump_automaton(ac, out);
+        out.flush();
+        return std::fflush(stdout) == 0 ? kExitMatched : kExitError;
+    }
+
     // grep prefixes output with the file name only when there is more than one
     // input; a single file or stdin prints bare lines.
-    const bool    show_names   = opts.input_files.size() > 1;
-    std::uint64_t total_matches = 0;
-    bool          had_error     = false;
+    const bool    show_names     = opts.input_files.size() > 1;
+    std::uint64_t matching_lines = 0;
+    bool          had_error      = false;
 
     if (opts.input_files.empty()) {
         const ScanResult r = scan_stream(stdin, nullptr, ac, opts, out);
-        total_matches += r.matching_lines;
-        had_error = had_error || !r.ok;
+        matching_lines += r.matching_lines;
+        if (!r.ok) {
+            fail("(standard input): read error");
+            had_error = true;
+        }
     } else {
         for (const std::string& path : opts.input_files) {
             std::FILE* in = std::fopen(path.c_str(), "rb");
@@ -79,8 +93,12 @@ int main(int argc, char** argv) {
             const ScanResult r =
                 scan_stream(in, show_names ? path.c_str() : nullptr, ac, opts, out);
             std::fclose(in);
-            total_matches += r.matching_lines;
-            had_error = had_error || !r.ok;
+            matching_lines += r.matching_lines;
+            if (!r.ok) {
+                // e.g. a directory on Linux: fopen succeeds, fread fails.
+                fail(path + ": read error");
+                had_error = true;
+            }
         }
     }
 
@@ -90,8 +108,9 @@ int main(int argc, char** argv) {
         return kExitError;
     }
 
+    // grep's rule: an error wins over "matched", even if other files matched.
     if (had_error) {
         return kExitError;
     }
-    return total_matches > 0 ? kExitMatched : kExitNoMatch;
+    return matching_lines > 0 ? kExitMatched : kExitNoMatch;
 }
