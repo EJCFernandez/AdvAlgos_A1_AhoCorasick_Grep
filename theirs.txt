@@ -1,0 +1,8 @@
+1:she sells sea shells by the sea shore
+2:the ushers showed his heirs to their seats
+4:nothing to see on this line
+5:hishers is not a word but it overlaps nicely
+6:abcabcabc: repeated patterns overlap with themselves
+7:café and naïve: UTF-8 characters are matched as plain bytes
+9:    indented line with his and hers
+10:this final line has no trailing newline: she
