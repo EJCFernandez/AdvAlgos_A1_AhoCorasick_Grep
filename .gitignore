@@ -1,0 +1,8 @@
+build/
+*.o
+*.obj
+*.exe
+.vs/
+.vscode/
+bench/data/
+bench/results/
